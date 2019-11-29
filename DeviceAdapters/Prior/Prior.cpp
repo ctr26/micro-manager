@@ -23,7 +23,7 @@
 
 #ifdef WIN32
    #include <windows.h>
-   #define snprintf _snprintf 
+   #define snprintf _snprintf
 #endif
 
 #include "prior.h"
@@ -36,6 +36,7 @@
 const char* g_XYStageDeviceName = "XYStage";
 const char* g_ZStageDeviceName = "ZStage";
 const char* g_NanoStageDeviceName = "NanoScanZ";
+const char* g_NanoStageProScanDeviceName = "NanoScanZProScan";
 const char* g_BasicControllerName = "BasicController";
 const char* g_Shutter1Name="Shutter-1";
 const char* g_Shutter2Name="Shutter-2";
@@ -65,6 +66,7 @@ MODULE_API void InitializeModuleData()
    RegisterDevice(g_Wheel3Name, MM::StateDevice, "Pro Scan filter wheel 3");
    RegisterDevice(g_ZStageDeviceName, MM::StageDevice, "Add-on Z-stage");
    RegisterDevice(g_NanoStageDeviceName, MM::StageDevice, "NanoScanZ");
+   RegisterDevice(g_NanoStageProScanDeviceName, MM::StageDevice, "NanoScanZProScan");
    RegisterDevice(g_XYStageDeviceName, MM::XYStageDevice, "XY Stage");
    RegisterDevice(g_TTL0Name, MM::ShutterDevice, "Pro Scan TTL 0");
    RegisterDevice(g_TTL1Name, MM::ShutterDevice, "Pro Scan TTL 1");
@@ -117,6 +119,11 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName)
       NanoZStage* s = new NanoZStage();
       return s;
    }
+   else if (strcmp(deviceName, g_NanoStageProScanDeviceName) == 0)
+   {
+      NanoZProScanStage* s = new NanoZProScanStage();
+      return s;
+   }
    else if (strcmp(deviceName, g_XYStageDeviceName) == 0)
    {
       XYStage* s = new XYStage();
@@ -159,7 +166,7 @@ MODULE_API void DeleteDevice(MM::Device* pDevice)
 
 int ClearPort(MM::Device& device, MM::Core& core, std::string port)
 {
-   // Clear contents of serial port 
+   // Clear contents of serial port
    const int bufSize = 255;
    unsigned char clear[bufSize];
    unsigned long read = bufSize;
@@ -175,13 +182,13 @@ int ClearPort(MM::Device& device, MM::Core& core, std::string port)
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Shutter 
+// Shutter
 // ~~~~~~~
 
-Shutter::Shutter(const char* name, int id) : 
-   initialized_(false), 
-   id_(id), 
-   name_(name), 
+Shutter::Shutter(const char* name, int id) :
+   initialized_(false),
+   id_(id),
+   name_(name),
    changedTime_(0.0)
 {
    InitializeDefaultErrorMessages();
@@ -229,7 +236,7 @@ int Shutter::Initialize()
 
    // set property list
    // -----------------
-   
+
    // State
    // -----
    CPropertyAction* pAct = new CPropertyAction (this, &Shutter::OnState);
@@ -457,11 +464,11 @@ int Shutter::OnDelay(MM::PropertyBase* pProp, MM::ActionType eAct)
 //
 
 Wheel::Wheel(const char* name, unsigned id) :
-      initialized_(false), 
-      numPos_(10), 
-      id_(id), 
-      name_(name), 
-      curPos_(0), 
+      initialized_(false),
+      numPos_(10),
+      id_(id),
+      name_(name),
+      curPos_(0),
       busy_(false),
       changedTime_(0.0)
 {
@@ -648,7 +655,7 @@ int Wheel::SetWheelPosition(unsigned pos)
 
    // Set timer for the Busy signal
    changedTime_ = GetCurrentMMTime();
-   
+
    if (answer.substr(0,1).compare("R") == 0)
    {
       curPos_ = pos;
@@ -774,9 +781,9 @@ int Wheel::OnSpeed(MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/)
 //
 XYStage::XYStage() :
    CXYStageBase<XYStage>(),
-   initialized_(false), 
-   port_("Undefined"), 
-   stepSizeXUm_(0.0), 
+   initialized_(false),
+   port_("Undefined"),
+   stepSizeXUm_(0.0),
    stepSizeYUm_(0.0)
 {
    InitializeDefaultErrorMessages();
@@ -956,21 +963,21 @@ bool XYStage::ControllerBusy()
    ret = GetSerialAnswer(port_.c_str(), "\r", answer);
    if (ret != DEVICE_OK)
       return false;
-   
+
    if (answer.length() >=1)
    {
       int status = atoi(answer.substr(0,1).c_str());
       int statusX = status&1;
       int statusY = status&2;
-      if (statusX || statusY) 
+      if (statusX || statusY)
          return true;
-      else 
+      else
          return false;
    }
 
    return false;
 }
- 
+
 int XYStage::SetPositionSteps(long x, long y)
 {
    MMThreadGuard guard(lock_);
@@ -1004,9 +1011,9 @@ int XYStage::SetPositionSteps(long x, long y)
       return ERR_OFFSET + errNo;
    }
 
-   return ERR_UNRECOGNIZED_ANSWER;   
+   return ERR_UNRECOGNIZED_ANSWER;
 }
- 
+
 int XYStage::SetRelativePositionSteps(long x, long y)
 {
    MMThreadGuard guard(lock_);
@@ -1040,7 +1047,7 @@ int XYStage::SetRelativePositionSteps(long x, long y)
       return ERR_OFFSET + errNo;
    }
 
-   return ERR_UNRECOGNIZED_ANSWER;   
+   return ERR_UNRECOGNIZED_ANSWER;
 }
 
 int XYStage::GetPositionSteps(long& x, long& y)
@@ -1051,7 +1058,7 @@ int XYStage::GetPositionSteps(long& x, long& y)
 
    return GetPositionStepsSingle('Y', y);
 }
- 
+
 int XYStage::Home()
 {
    MMThreadGuard guard(lock_);
@@ -1147,9 +1154,9 @@ int XYStage::SetOrigin()
       return ERR_OFFSET + errNo;
    }
 
-   return ERR_UNRECOGNIZED_ANSWER; 
+   return ERR_UNRECOGNIZED_ANSWER;
 }
- 
+
 int XYStage::GetLimitsUm(double& /*xMin*/, double& /*xMax*/, double& /*yMin*/, double& /*yMax*/)
 {
    return DEVICE_UNSUPPORTED_COMMAND;
@@ -1208,13 +1215,13 @@ int XYStage::OnStepSizeY(MM::PropertyBase* pProp, MM::ActionType eAct)
 /**
  * Gets and sets the maximum speed with which the Prior stage travels
  */
-int XYStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct) 
+int XYStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
    if (ret != DEVICE_OK)
       return ret;
 
-   if (eAct == MM::BeforeGet) 
+   if (eAct == MM::BeforeGet)
    {
       // send command
       ret = SendSerialCommand(port_.c_str(), "SMS", "\r");
@@ -1233,8 +1240,8 @@ int XYStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       pProp->Set((long)maxSpeed);
 
-   } 
-   else if (eAct == MM::AfterSet) 
+   }
+   else if (eAct == MM::AfterSet)
    {
       long maxSpeed;
       pProp->Get(maxSpeed);
@@ -1273,13 +1280,13 @@ int XYStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 /**
  * Gets and sets the Acceleration of the Prior stage travels
  */
-int XYStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct) 
+int XYStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
    if (ret != DEVICE_OK)
       return ret;
 
-   if (eAct == MM::BeforeGet) 
+   if (eAct == MM::BeforeGet)
    {
       // send command
       ret = SendSerialCommand(port_.c_str(), "SAS", "\r");
@@ -1298,8 +1305,8 @@ int XYStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       pProp->Set((long)acceleration);
 
-   } 
-   else if (eAct == MM::AfterSet) 
+   }
+   else if (eAct == MM::AfterSet)
    {
       long acceleration;
       pProp->Get(acceleration);
@@ -1338,13 +1345,13 @@ int XYStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct)
 /**
  * Gets and sets the SCurve of the Prior stage
  */
-int XYStage::OnSCurve(MM::PropertyBase* pProp, MM::ActionType eAct) 
+int XYStage::OnSCurve(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
    if (ret != DEVICE_OK)
       return ret;
 
-   if (eAct == MM::BeforeGet) 
+   if (eAct == MM::BeforeGet)
    {
       // send command
       ret = SendSerialCommand(port_.c_str(), "SCS", "\r");
@@ -1363,8 +1370,8 @@ int XYStage::OnSCurve(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       pProp->Set((long)sCurve);
 
-   } 
-   else if (eAct == MM::AfterSet) 
+   }
+   else if (eAct == MM::AfterSet)
    {
       long sCurve;
       pProp->Get(sCurve);
@@ -1706,7 +1713,7 @@ int ZStage::GetPositionUm(double& pos)
    pos = steps * stepSizeUm_;
    return DEVICE_OK;
 }
-  
+
 int ZStage::SetPositionSteps(long pos)
 {
    // First Clear serial port from previous stuff
@@ -1743,9 +1750,9 @@ int ZStage::SetPositionSteps(long pos)
       return ERR_OFFSET + errNo;
    }
 
-   return ERR_UNRECOGNIZED_ANSWER;   
+   return ERR_UNRECOGNIZED_ANSWER;
 }
-  
+
 int ZStage::GetPositionSteps(long& steps)
 {
    // First Clear serial port from previous stuff
@@ -1856,13 +1863,13 @@ int ZStage::OnPort(MM::PropertyBase* pProp, MM::ActionType eAct)
 /**
  * Gets and sets the maximum speed with which the Prior Z-stage travels
  */
-int ZStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct) 
+int ZStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
    if (ret != DEVICE_OK)
       return ret;
 
-   if (eAct == MM::BeforeGet) 
+   if (eAct == MM::BeforeGet)
    {
       // send command
       ret = SendSerialCommand(port_.c_str(), "SMZ", "\r");
@@ -1881,8 +1888,8 @@ int ZStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       pProp->Set((long)maxSpeed);
 
-   } 
-   else if (eAct == MM::AfterSet) 
+   }
+   else if (eAct == MM::AfterSet)
    {
       long maxSpeed;
       pProp->Get(maxSpeed);
@@ -1921,13 +1928,13 @@ int ZStage::OnMaxSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 /**
  * Gets and sets the Acceleration of the Prior Z-stage travels
  */
-int ZStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct) 
+int ZStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
    if (ret != DEVICE_OK)
       return ret;
 
-   if (eAct == MM::BeforeGet) 
+   if (eAct == MM::BeforeGet)
    {
       // send command
       ret = SendSerialCommand(port_.c_str(), "SAZ", "\r");
@@ -1946,8 +1953,8 @@ int ZStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       pProp->Set((long)acceleration);
 
-   } 
-   else if (eAct == MM::AfterSet) 
+   }
+   else if (eAct == MM::AfterSet)
    {
       long acceleration;
       pProp->Get(acceleration);
@@ -1986,13 +1993,13 @@ int ZStage::OnAcceleration(MM::PropertyBase* pProp, MM::ActionType eAct)
 /**
  * Gets and sets the SCurve of the Prior Z-stage
  */
-int ZStage::OnSCurve(MM::PropertyBase* pProp, MM::ActionType eAct) 
+int ZStage::OnSCurve(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
    if (ret != DEVICE_OK)
       return ret;
 
-   if (eAct == MM::BeforeGet) 
+   if (eAct == MM::BeforeGet)
    {
       // send command
       ret = SendSerialCommand(port_.c_str(), "SCZ", "\r");
@@ -2011,8 +2018,8 @@ int ZStage::OnSCurve(MM::PropertyBase* pProp, MM::ActionType eAct)
 
       pProp->Set((long)sCurve);
 
-   } 
-   else if (eAct == MM::AfterSet) 
+   }
+   else if (eAct == MM::AfterSet)
    {
       long sCurve;
       pProp->Get(sCurve);
@@ -2199,7 +2206,7 @@ int NanoZStage::GetPositionUm(double& pos)
    pos = steps * stepSizeUm_;
    return DEVICE_OK;
 }
-  
+
 int NanoZStage::SetPositionSteps(long pos)
 {
    // First Clear serial port from previous stuff
@@ -2234,10 +2241,10 @@ int NanoZStage::SetPositionSteps(long pos)
 
    // Note: there seem to be issues with controller moving into Relative mode
    // If this is the case, try sending PV,dPos position here
- 
-   return ERR_UNRECOGNIZED_ANSWER;   
+
+   return ERR_UNRECOGNIZED_ANSWER;
 }
-  
+
 int NanoZStage::SetRelativePositionUm(double pos)
 {
    int ret = ClearPort(*this, *GetCoreCallback(), port_);
@@ -2250,7 +2257,7 @@ int NanoZStage::SetRelativePositionUm(double pos)
    else if ( pos < 0) {
       command << "D ";
       pos = -pos;
-   } else 
+   } else
       return DEVICE_OK;
 
    command << pos;
@@ -2276,7 +2283,7 @@ int NanoZStage::SetRelativePositionUm(double pos)
       return ERR_OFFSET + errNo;
    }
 
-   return ERR_UNRECOGNIZED_ANSWER;   
+   return ERR_UNRECOGNIZED_ANSWER;
 }
 
 int NanoZStage::GetPositionSteps(long& steps)
@@ -2400,6 +2407,342 @@ int NanoZStage::GetModelAndVersion(std::string& model, std::string& version)
 }
 
 
+
+
+///////////////////////////////////////////////////////////////////////////////
+// NanoZStage through ProScan
+
+NanoZProScanStage::NanoZProScanStage() :
+   initialized_(false),
+   port_("Undefined"),
+   stepSizeUm_(0.00001),
+   answerTimeoutMs_(1000)
+{
+   InitializeDefaultErrorMessages();
+   SetErrorText(10108, "Value out of range");
+
+   // create pre-initialization properties
+   // ------------------------------------
+
+   // Name
+   CreateProperty(MM::g_Keyword_Name, g_ZStageDeviceName, MM::String, true);
+
+   // Description
+   CreateProperty(MM::g_Keyword_Description, "Prior NanoScanZ adapter", MM::String, true);
+
+   // Port
+   CPropertyAction* pAct = new CPropertyAction (this, &NanoZProScanStage::OnPort);
+   CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
+}
+
+NanoZProScanStage::~NanoZProScanStage()
+{
+   Shutdown();
+}
+
+void NanoZProScanStage::GetName(char* Name) const
+{
+   CDeviceUtils::CopyLimitedString(Name, g_NanoStageDeviceName);
+}
+
+int NanoZProScanStage::Initialize()
+{
+   // Ensure we are in Standard mode (not Compatibility mode)
+   int ret = SendSerialCommand(port_.c_str(), "COMP 0", "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+   std::string compAnswer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", compAnswer);
+   // (compAnswer should be "0")
+   if (ret != DEVICE_OK)
+      return false;
+
+
+   // set stage step size and resolution
+   ret = GetPositionSteps(curSteps_);
+   if (ret != DEVICE_OK)
+      ret = GetPositionSteps(curSteps_);
+      if (ret != DEVICE_OK)
+         return ret;
+
+   std::string version, model;
+   ret = GetModelAndVersion(model, version);
+   if (ret != DEVICE_OK)
+      return ret;
+   LogMessage(model.c_str());
+   LogMessage(version.c_str());
+
+   ret = UpdateStatus();
+   if (ret != DEVICE_OK)
+      return ret;
+
+   initialized_ = true;
+   return DEVICE_OK;
+}
+
+int NanoZProScanStage::Shutdown()
+{
+   if (initialized_)
+   {
+      initialized_ = false;
+   }
+   return DEVICE_OK;
+}
+
+bool NanoZProScanStage::Busy()
+{
+   // First Clear serial port from previous stuff
+   int ret = ClearPort(*this, *GetCoreCallback(), port_);
+   if (ret != DEVICE_OK)
+      return false;
+
+   const char* command = "$";
+
+   // send command
+   ret = SendSerialCommand(port_.c_str(), command, "\r");
+   if (ret != DEVICE_OK)
+      return false;
+
+   // block/wait for acknowledge, or until we time out;
+   std::string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+      return false;
+
+   if (answer.length() == 1)
+   {
+      // Z axis status is in bit 3:
+      int status = atoi(answer.c_str()) & 4;
+      return status > 0 ? true : false;
+   }
+
+   return false;
+}
+
+int NanoZProScanStage::SetPositionUm(double pos)
+{
+   double fsteps = pos / stepSizeUm_;
+   long steps;
+   if (pos >= 0)
+      steps = (long) (fsteps + 0.5);
+   else
+      steps = (long) (fsteps - 0.5);
+   return SetPositionSteps(steps);
+}
+
+int NanoZProScanStage::GetPositionUm(double& pos)
+{
+   long steps;
+   int ret = GetPositionSteps(steps);
+   if (ret != DEVICE_OK)
+      return ret;
+   pos = steps * stepSizeUm_;
+   return DEVICE_OK;
+}
+
+int NanoZProScanStage::SetPositionSteps(long pos)
+{
+   // First Clear serial port from previous stuff
+   int ret = ClearPort(*this, *GetCoreCallback(), port_);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   std::ostringstream command;
+   double dPos = pos * stepSizeUm_;
+   command << "V " << dPos;
+   // send command
+   ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // block/wait for acknowledge, or until we time out;
+   std::string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   if (answer.substr(0,1).compare("R") == 0)
+   {
+      curSteps_ = pos;
+      return DEVICE_OK;
+   }
+   else if (answer.substr(0, 1).compare("E") == 0 && answer.length() > 2)
+   {
+      int errNo = atoi(answer.substr(2).c_str());
+      return ERR_OFFSET + errNo;
+   }
+
+   // Note: there seem to be issues with controller moving into Relative mode
+   // If this is the case, try sending PV,dPos position here
+
+   return ERR_UNRECOGNIZED_ANSWER;
+}
+
+int NanoZProScanStage::SetRelativePositionUm(double pos)
+{
+   int ret = ClearPort(*this, *GetCoreCallback(), port_);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   std::ostringstream command;
+   if (pos > 0)
+      command << "U ";
+   else if ( pos < 0) {
+      command << "D ";
+      pos = -pos;
+   } else
+      return DEVICE_OK;
+
+   command << pos;
+
+   // send command
+   ret = SendSerialCommand(port_.c_str(), command.str().c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // block/wait for acknowledge, or until we time out;
+   std::string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   if (answer.substr(0,1).compare("R") == 0)
+   {
+      return DEVICE_OK;
+   }
+   else if (answer.substr(0, 1).compare("E") == 0 && answer.length() > 2)
+   {
+      int errNo = atoi(answer.substr(2).c_str());
+      return ERR_OFFSET + errNo;
+   }
+
+   return ERR_UNRECOGNIZED_ANSWER;
+}
+
+int NanoZProScanStage::GetPositionSteps(long& steps)
+{
+   // First Clear serial port from previous stuff
+   int ret = ClearPort(*this, *GetCoreCallback(), port_);
+   if (ret != DEVICE_OK)
+      return ret;
+
+   const char* command="PZ";
+
+   // send command
+   ret = SendSerialCommand(port_.c_str(), command, "\r");
+   if (ret != DEVICE_OK)
+      return ret;
+
+   // block/wait for acknowledge, or until we time out;
+   std::string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+   {
+      // failed reading the port
+      return ret;
+   }
+
+   if (answer.length() > 2 && answer.substr(0, 1).compare("E") == 0)
+   {
+      int errNo = atoi(answer.substr(2).c_str());
+      return ERR_OFFSET + errNo;
+   }
+   else if (answer.length() > 0)
+   {
+      std::stringstream is(answer);
+      double tmpSteps;
+      is >> tmpSteps;
+      //steps = atol(answer.c_str());
+      steps = (long) (tmpSteps / stepSizeUm_);
+      curSteps_ = steps;
+      return DEVICE_OK;
+   }
+
+   return ERR_UNRECOGNIZED_ANSWER;
+}
+
+int NanoZProScanStage::SetOrigin()
+{
+   return DEVICE_UNSUPPORTED_COMMAND;
+}
+
+int NanoZProScanStage::GetLimits(double& /*min*/, double& /*max*/)
+{
+   return DEVICE_UNSUPPORTED_COMMAND;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Action handlers
+///////////////////////////////////////////////////////////////////////////////
+
+int NanoZProScanStage::OnPort(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      pProp->Set(port_.c_str());
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      if (initialized_)
+      {
+         // revert
+         pProp->Set(port_.c_str());
+         return ERR_PORT_CHANGE_FORBIDDEN;
+      }
+
+      pProp->Get(port_);
+   }
+
+   return DEVICE_OK;
+}
+
+// NanoZProScanStage private functions
+bool NanoZProScanStage::HasCommand(std::string command)
+{
+   int ret = SendSerialCommand(port_.c_str(), command.c_str(), "\r");
+   if (ret != DEVICE_OK)
+      return false;
+
+   // block/wait for acknowledge, or until we time out;
+   std::string answer;
+   ret = GetSerialAnswer(port_.c_str(), "\r", answer);
+   if (ret != DEVICE_OK)
+      return false;
+
+   if (answer.substr(0, 1).compare("E") == 0 && answer.length() > 2)
+   {
+      return false;
+   }
+   return true;
+}
+
+int NanoZProScanStage::GetModelAndVersion(std::string& model, std::string& version)
+{
+   int ret = SendSerialCommand(port_.c_str(), "DATE", "\r");
+   if (ret != DEVICE_OK)
+      return false;
+
+   // block/wait for acknowledge, or until we time out;
+   ret = GetSerialAnswer(port_.c_str(), "\r", model);
+   if (ret != DEVICE_OK)
+      return false;
+
+   if (model.substr(0, 1).compare("E") == 0 && model.length() > 2)
+   {
+      return ERR_OFFSET;
+   }
+
+   ret = GetSerialAnswer(port_.c_str(), "\r", version);
+   if (ret != DEVICE_OK)
+      return false;
+
+   return DEVICE_OK;
+}
+
+
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // BasicController device  >> NOT FINISHED
 ///////////////////////////////////////////////////////////////////////////////
@@ -2440,7 +2783,7 @@ int BasicController::Initialize()
 {
    // set property list
    // -----------------
-   
+
    // command
    CPropertyAction *pAct = new CPropertyAction (this, &BasicController::OnCommand);
    CreateProperty("Command", "", MM::String, false, pAct);
@@ -2498,7 +2841,7 @@ bool BasicController::Busy()
    else
       return false;
 }
-    
+
 int BasicController::ExecuteCommand(const std::string& cmd, std::string& response)
 {
    // send command
@@ -2590,7 +2933,7 @@ int BasicController::OnResponse(MM::PropertyBase* pProp, MM::ActionType eAct)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Lumen 
+// Lumen
 // ~~~~~
 
 Lumen::Lumen() :
@@ -2632,7 +2975,7 @@ int Lumen::Initialize()
 {
    // set property list
    // -----------------
-   
+
    // State
    // -----
    CPropertyAction* pAct = new CPropertyAction (this, &Lumen::OnState);
@@ -2835,13 +3178,13 @@ int Lumen::OnIntensity(MM::PropertyBase* pProp, MM::ActionType eAct)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// TTLShutter 
+// TTLShutter
 // ~~~~~~~
 
-TTLShutter::TTLShutter(const char* name, int id) : 
-   name_(name), 
-   initialized_(false), 
-   id_(id), 
+TTLShutter::TTLShutter(const char* name, int id) :
+   name_(name),
+   initialized_(false),
+   id_(id),
    changedTime_(0.0)
 {
    InitializeDefaultErrorMessages();
@@ -2879,7 +3222,7 @@ int TTLShutter::Initialize()
 {
    // set property list
    // -----------------
-   
+
    // State
    // -----
    CPropertyAction* pAct = new CPropertyAction (this, &TTLShutter::OnState);
